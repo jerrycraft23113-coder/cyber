@@ -1,6 +1,10 @@
+import collections
 import os
 import binascii
-from typing import List
+from typing import List, Optional
+
+import numpy as np
+import psutil
 
 try:
     import winreg
@@ -53,3 +57,57 @@ def count_files(dir_list: List[str]) -> int:
         except OSError:
             pass
     return total
+
+
+def count_processes() -> int:
+    return sum(1 for _ in psutil.process_iter())
+
+
+def count_listen_ports() -> int:
+    return sum(
+        1 for c in psutil.net_connections()
+        if c.status == "LISTEN"
+    )
+
+
+class CpuMovingAverage:
+    """Rolling window average of per-core CPU%. Window in seconds."""
+
+    def __init__(self, window_s: float, tick_interval_s: float = 2.0):
+        max_samples = max(1, int(window_s / tick_interval_s))
+        self._window: collections.deque = collections.deque(maxlen=max_samples)
+
+    def update(self, per_core: List[float]) -> None:
+        self._window.append(list(per_core))
+
+    def get(self, core_count: Optional[int] = None) -> List[float]:
+        if not self._window:
+            n = core_count or 1
+            return [0.0] * n
+        # Column-wise mean across all samples in window
+        max_cores = max(len(row) for row in self._window)
+        n = core_count if core_count is not None else max_cores
+        totals = [0.0] * n
+        counts = [0] * n
+        for row in self._window:
+            for i in range(n):
+                if i < len(row):
+                    totals[i] += row[i]
+                    counts[i] += 1
+        return [totals[i] / counts[i] if counts[i] > 0 else 0.0 for i in range(n)]
+
+
+def build_state_vector(config: dict, cpu_ma: CpuMovingAverage) -> np.ndarray:
+    """Build the fixed-length state vector V for the current tick."""
+    cpu_core_count: int = config["cpu_core_count"]
+
+    proc_count = float(count_processes())
+    reg_hash = float(hash_registry_keys(config["monitored_reg_keys"]))
+    file_count = float(count_files(config["monitored_dirs"]))
+    open_ports = float(count_listen_ports())
+    cpu_cores = cpu_ma.get(core_count=cpu_core_count)
+
+    return np.array(
+        [proc_count, reg_hash, file_count, open_ports] + cpu_cores,
+        dtype=float,
+    )

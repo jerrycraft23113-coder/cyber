@@ -64,3 +64,63 @@ def test_count_files_missing_dir():
     """Missing directory should be skipped without crashing."""
     count = count_files(["C:\\NonExistentPath_xyz"])
     assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 4: process/port counters, CPU moving average, state vector builder
+# ---------------------------------------------------------------------------
+import numpy as np
+from sandbox.state_vector import (
+    count_processes, count_listen_ports,
+    CpuMovingAverage, build_state_vector,
+)
+
+
+def test_count_processes_returns_int():
+    with patch("sandbox.state_vector.psutil") as mock_psutil:
+        mock_psutil.process_iter.return_value = [1, 2, 3]
+        assert count_processes() == 3
+
+
+def test_count_listen_ports_returns_int():
+    conn = type("C", (), {"status": "LISTEN", "laddr": type("A", (), {"port": 80})()})()
+    with patch("sandbox.state_vector.psutil") as mock_psutil:
+        mock_psutil.net_connections.return_value = [conn]
+        assert count_listen_ports() == 1
+
+
+def test_cpu_moving_average_window():
+    ma = CpuMovingAverage(window_s=4, tick_interval_s=2)  # window = 2 samples
+    ma.update([50.0, 50.0])
+    ma.update([100.0, 100.0])
+    result = ma.get()
+    # Should be average of last 2 ticks: (50+100)/2 = 75
+    assert result == [75.0, 75.0]
+
+
+def test_cpu_moving_average_pads_to_core_count():
+    ma = CpuMovingAverage(window_s=2, tick_interval_s=2)
+    ma.update([50.0])  # only 1 core reading
+    result = ma.get(core_count=4)
+    assert len(result) == 4
+    assert result[0] == 50.0
+    assert result[1] == 0.0   # padded
+
+
+def test_build_state_vector_correct_length():
+    config = {
+        "cpu_core_count": 2,
+        "monitored_reg_keys": [],
+        "monitored_dirs": [],
+        "blue_genome": [0.25, 0.35, 0.2, 0.2, 0.5, 0.3, 0.7, 10.0],
+    }
+    with patch("sandbox.state_vector.psutil") as mock_psutil, \
+         patch("sandbox.state_vector.winreg"):
+        mock_psutil.process_iter.return_value = []
+        mock_psutil.net_connections.return_value = []
+        mock_psutil.cpu_percent.return_value = [10.0, 20.0]
+        cpu_ma = CpuMovingAverage(window_s=10, tick_interval_s=2)
+        V = build_state_vector(config, cpu_ma)
+    # length = 4 fixed + cpu_core_count
+    assert len(V) == 4 + 2
+    assert isinstance(V, np.ndarray)
