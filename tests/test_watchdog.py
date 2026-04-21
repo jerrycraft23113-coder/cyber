@@ -53,3 +53,17 @@ def test_check_liveness_within_tolerance(tmp_path):
     hb = tmp_path / "missing_heartbeat.json"
     # 1 missing tick is within max=2
     assert check_liveness(hb, missing_ticks=1, max_missing=2) is True
+
+
+def test_is_heartbeat_fresh_returns_true_for_new_file(tmp_path):
+    """A just-written file should be considered fresh."""
+    from sandbox.watchdog import _is_heartbeat_fresh
+    hb = tmp_path / "hb.json"
+    hb.write_text('{"alive": true}')
+    assert _is_heartbeat_fresh(hb) is True
+
+
+def test_is_heartbeat_fresh_returns_false_for_missing_file(tmp_path):
+    from sandbox.watchdog import _is_heartbeat_fresh
+    hb = tmp_path / "no_hb.json"
+    assert _is_heartbeat_fresh(hb) is False

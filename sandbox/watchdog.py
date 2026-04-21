@@ -11,7 +11,6 @@ import os
 import sys
 import time
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -73,6 +72,15 @@ def check_liveness(
     except FileNotFoundError:
         pass
     return missing_ticks < max_missing
+
+
+def _is_heartbeat_fresh(path: Path, tick_interval: float = TICK_INTERVAL) -> bool:
+    """Return True only if the heartbeat file exists and is within 1.5 tick intervals."""
+    try:
+        age = time.time() - path.stat().st_mtime
+        return age <= tick_interval * 1.5
+    except FileNotFoundError:
+        return False
 
 
 # ── Watchdog round ────────────────────────────────────────────────────────────
@@ -188,7 +196,8 @@ class WatchdogRound:
             self.time_to_first_alert_s = time.time() - self.start_time
 
         # 3. NULL_ROUTE auto-deactivate on Blue crash
-        if not (self.nz / "blue_heartbeat.json").exists() and self.blue_missing >= 1:
+        blue_hb = self.nz / "blue_heartbeat.json"
+        if not _is_heartbeat_fresh(blue_hb) and self.blue_missing >= 1:
             self.null_route_active = False
 
         if self.null_route_active:
@@ -205,17 +214,16 @@ class WatchdogRound:
 
         # 5. Check liveness (mtime-based — stale file counts as missing)
         red_hb = self.nz / "red_heartbeat.json"
-        blue_hb = self.nz / "blue_heartbeat.json"
 
-        if not check_liveness(red_hb, self.red_missing, max_missing=2):
-            self.red_missing += 1
-        else:
+        if _is_heartbeat_fresh(red_hb):
             self.red_missing = 0
-
-        if not check_liveness(blue_hb, self.blue_missing, max_missing=2):
-            self.blue_missing += 1
         else:
+            self.red_missing += 1
+
+        if _is_heartbeat_fresh(blue_hb):
             self.blue_missing = 0
+        else:
+            self.blue_missing += 1
 
         if self.red_missing >= 2:
             return "RED_CRASH"
@@ -308,6 +316,7 @@ class WatchdogRound:
             "phase": self.config["phase"],
             "rounds_survived_s": round(elapsed, 2),
             "peak_delta": round(self.peak_delta, 6),
+            "time_to_first_alert_s": round(self.time_to_first_alert_s, 3) if self.time_to_first_alert_s is not None else None,
             "red_actions_taken": self.red_actions_taken,
             "blue_responses": self.blue_responses,
             "blue_false_positives": self.blue_false_positives,
