@@ -5,7 +5,7 @@ from typing import List
 def build_weights(blue_genome: list, cpu_core_count: int) -> np.ndarray:
     """
     Build weight vector aligned with state vector dimensions.
-    Layout: [w_proc, w_reg, w_fs, w_net_cpu, w_cpu, ..., w_cpu]
+    Layout: [w_proc, w_reg, w_fs, w_cpu, w_cpu, ..., w_cpu]
     cpu weight (blue_genome[3]) is replicated for each core.
     """
     w_proc, w_reg, w_fs, w_cpu = (
