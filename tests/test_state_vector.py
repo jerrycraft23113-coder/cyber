@@ -2,7 +2,6 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from unittest.mock import patch, MagicMock
-import binascii
 
 from sandbox.state_vector import hash_registry_keys, count_files
 
@@ -23,17 +22,22 @@ def test_hash_registry_keys_returns_int():
 
 
 def test_hash_registry_keys_xor_not_sum():
-    """XOR of two identical hashes should be 0; sum would not be."""
+    """XOR of a value with itself should be 0; sum-based would not."""
     with patch("sandbox.state_vector.winreg") as mock_reg:
         mock_key = MagicMock()
         mock_reg.OpenKey.return_value.__enter__ = lambda s: mock_key
         mock_reg.OpenKey.return_value.__exit__ = MagicMock(return_value=False)
-        mock_reg.QueryInfoKey.return_value = (0, 0, 0)
+        mock_reg.QueryInfoKey.return_value = (1, 0, 0)  # 1 value so hash is non-zero
+        mock_reg.EnumValue.side_effect = [
+            ("val1", "data1", 1),
+            ("val1", "data1", 1),  # same value again for second call
+        ]
         mock_reg.HKEY_CURRENT_USER = 0x80000001
-        # Call twice with same key list — XOR of same value twice = 0
         r1 = hash_registry_keys(["HKCU\\Same"])
         r2 = hash_registry_keys(["HKCU\\Same"])
-    assert r1 ^ r2 == 0   # XOR of same hash with itself is 0
+    assert r1 != 0          # confirm hash is non-zero
+    assert r1 ^ r2 == 0     # XOR of same value with itself is 0
+    assert r1 + r2 != 0     # sum-based would not satisfy this
 
 def test_hash_registry_keys_missing_key_returns_zero_contribution():
     """A missing registry key should not crash; skip it silently."""

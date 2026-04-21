@@ -38,7 +38,7 @@ def hash_registry_keys(key_list: List[str]) -> int:
                     payload = f"{name}={data}".encode("utf-8", errors="replace")
                     crc = binascii.crc32(payload) & 0xFFFFFFFF
                     result ^= crc
-        except (OSError, TypeError):
+        except (OSError, TypeError, KeyError):
             pass
     return result
 
