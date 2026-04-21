@@ -1,9 +1,14 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import numpy as np
 from unittest.mock import patch, MagicMock
 
-from sandbox.state_vector import hash_registry_keys, count_files
+from sandbox.state_vector import (
+    hash_registry_keys, count_files,
+    count_processes, count_listen_ports,
+    CpuMovingAverage, build_state_vector,
+)
 
 
 def test_hash_registry_keys_returns_int():
@@ -69,12 +74,6 @@ def test_count_files_missing_dir():
 # ---------------------------------------------------------------------------
 # Task 4: process/port counters, CPU moving average, state vector builder
 # ---------------------------------------------------------------------------
-import numpy as np
-from sandbox.state_vector import (
-    count_processes, count_listen_ports,
-    CpuMovingAverage, build_state_vector,
-)
-
 
 def test_count_processes_returns_int():
     with patch("sandbox.state_vector.psutil") as mock_psutil:

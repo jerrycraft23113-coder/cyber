@@ -82,7 +82,7 @@ class CpuMovingAverage:
 
     def get(self, core_count: Optional[int] = None) -> List[float]:
         if not self._window:
-            n = core_count or 1
+            n = core_count if core_count is not None else 1
             return [0.0] * n
         # Column-wise mean across all samples in window
         max_cores = max(len(row) for row in self._window)
