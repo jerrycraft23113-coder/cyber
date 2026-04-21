@@ -1,0 +1,24 @@
+<!-- host/arena.wsb -->
+<Configuration>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>F:\neutral_zone</HostFolder>
+      <SandboxFolder>F:\neutral_zone</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>D:\Ry\cyber\sandbox</HostFolder>
+      <SandboxFolder>C:\vanguard_duel\sandbox</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>D:\Ry\cyber\shared</HostFolder>
+      <SandboxFolder>C:\vanguard_duel\shared</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>python C:\vanguard_duel\sandbox\watchdog.py</Command>
+  </LogonCommand>
+  <Networking>Enable</Networking>
+</Configuration>
