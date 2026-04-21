@@ -56,3 +56,13 @@ def test_alert_threshold_constraint_violated():
     error = validate(BOOTSTRAP_BLUE, "stealth", delta_threshold=0.03)
     assert error is not None
     assert "threshold" in error.lower()
+
+def test_genome_to_params_unknown_phase_raises():
+    import pytest
+    with pytest.raises(ValueError, match="Unknown phase"):
+        genome_to_params([0.3, 0.4, 0.6, 0.2, 0.5], "red", "unknown_phase")
+
+def test_genome_to_params_short_genome_raises():
+    import pytest
+    with pytest.raises(ValueError, match="length"):
+        genome_to_params([0.3, 0.4], "red", "stealth")  # stealth needs 5

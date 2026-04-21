@@ -16,12 +16,9 @@ BLUE_RANGES = [
     (0.0, 1.0),   # 6: null_route_threshold
     (5.0, 120.0), # 7: cpu_ma_window_s
 ]
-# Keep private aliases for internal use within this module
-_RED_RANGES = RED_RANGES
-_BLUE_RANGES = BLUE_RANGES
 
 # Bootstrap Blue genome — satisfies all constraints on first run
-BOOTSTRAP_BLUE = [0.25, 0.35, 0.2, 0.2, 0.5, 0.3, 0.7, 30.0]
+BOOTSTRAP_BLUE: tuple = (0.25, 0.35, 0.2, 0.2, 0.5, 0.3, 0.7, 30.0)
 
 # Red gene names by index
 _RED_GENE_NAMES = [
@@ -56,8 +53,12 @@ def validate(
     otherwise role is "blue".
     """
     if role is None:
-        expected_red = RED_PHASE_SIZES.get(phase)
-        role = "red" if (expected_red is not None and len(genome) == expected_red) else "blue"
+        if phase not in RED_PHASE_SIZES:
+            return f"Unknown phase '{phase}'"
+        expected_red = RED_PHASE_SIZES[phase]
+        role = "red" if len(genome) == expected_red else "blue"
+    elif role not in ("red", "blue"):
+        return f"Unknown role '{role}'"
 
     if role == "red":
         expected = RED_PHASE_SIZES.get(phase)
@@ -65,11 +66,11 @@ def validate(
             return f"Unknown phase '{phase}'"
         if len(genome) != expected:
             return f"Red genome length {len(genome)} != expected {expected} for phase '{phase}'"
-        ranges = _RED_RANGES[:expected]
+        ranges = RED_RANGES[:expected]
     else:
         if len(genome) != BLUE_SIZE:
             return f"Blue genome length {len(genome)} != expected {BLUE_SIZE}"
-        ranges = _BLUE_RANGES
+        ranges = BLUE_RANGES
 
     for i, (val, (lo, hi)) in enumerate(zip(genome, ranges)):
         if not (lo <= val <= hi):
@@ -95,7 +96,13 @@ def validate(
 def genome_to_params(genome: list, role: str, phase: str) -> dict:
     """Map a genome vector to a named parameter dict."""
     if role == "red":
+        if phase not in RED_PHASE_SIZES:
+            raise ValueError(f"Unknown phase '{phase}'")
         size = RED_PHASE_SIZES[phase]
+        if len(genome) < size:
+            raise ValueError(f"Genome length {len(genome)} < expected {size} for phase '{phase}'")
         return dict(zip(_RED_GENE_NAMES[:size], genome))
     else:
+        if len(genome) < BLUE_SIZE:
+            raise ValueError(f"Genome length {len(genome)} < expected {BLUE_SIZE}")
         return dict(zip(_BLUE_GENE_NAMES, genome))
