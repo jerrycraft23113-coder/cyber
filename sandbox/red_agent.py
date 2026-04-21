@@ -20,6 +20,11 @@ try:
 except ImportError:
     winreg = None
 
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 NEUTRAL_ZONE = Path(os.environ.get("NEUTRAL_ZONE", r"F:\neutral_zone"))
 MAX_STEALTH_DELAY_MS = 2000
 TICK_INTERVAL = 2.0
@@ -110,10 +115,53 @@ class RedAgent:
             "actions_taken": self.actions_taken,
         })
 
-    def run_tick(self) -> None:
+    def action_process_kill(self, t0_pids: set) -> None:
+        freq = self.params.get("process_kill_freq", 0.0)
+        if random.random() > freq:
+            return
+        try:
+            import psutil as _psutil
+            candidates = [p for p in _psutil.process_iter(["pid", "name"]) if p.pid not in t0_pids]
+            if candidates:
+                target = random.choice(candidates)
+                target.kill()
+        except Exception:
+            pass
+
+    def action_cpu_spike(self, duration_s: float = 0.5) -> None:
+        import threading
+        intensity = self.params.get("cpu_spike_intensity", 0.0)
+        if intensity < 0.1:
+            return
+        stop = threading.Event()
+        def spin():
+            while not stop.is_set():
+                pass
+        threads = [threading.Thread(target=spin, daemon=True) for _ in range(max(1, int(intensity * 4)))]
+        for t in threads:
+            t.start()
+        time.sleep(duration_s * intensity)
+        stop.set()
+
+    def action_exfil_chunk(self) -> None:
+        chunk_size_norm = self.params.get("exfil_chunk_size", 0.0)
+        if chunk_size_norm < 0.01:
+            return
+        chunk_bytes = int(chunk_size_norm * 50 * 1024)
+        exfil_dir = self.nz / "exfil"
+        exfil_dir.mkdir(exist_ok=True)
+        chunk_file = exfil_dir / f"chunk_{random.randint(100000, 999999)}.bin"
+        chunk_file.write_bytes(os.urandom(chunk_bytes))
+
+    def run_tick(self, t0_pids: set = None) -> None:
         self._stealth_delay()
         self.action_file_drop()
         self.action_reg_write()
+        if len(self.config.get("red_genome", [])) > 5:
+            self.action_process_kill(t0_pids or set())
+            self.action_cpu_spike()
+        if len(self.config.get("red_genome", [])) > 7:
+            self.action_exfil_chunk()
         self.actions_taken += 1
         self.write_heartbeat()
 

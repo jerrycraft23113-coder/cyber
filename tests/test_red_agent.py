@@ -58,3 +58,60 @@ def test_reg_key_from_genome_hkcu_when_bias_low():
 def test_reg_key_from_genome_hklm_when_bias_high():
     key = _reg_key_from_genome(reg_hive_bias=0.9)
     assert key.startswith("HKLM")
+
+
+# --- Phase B + C tests ---
+
+def make_phase_b_agent(tmp_path):
+    config = {
+        "phase": "disruption",
+        "red_genome": [0.5, 0.5, 0.0, 0.0, 0.0, 0.8, 0.5],
+        "monitored_dirs": [str(tmp_path)],
+        "monitored_reg_keys": [],
+    }
+    (tmp_path / "round_config.json").write_text(json.dumps(config))
+    agent = RedAgent(nz=tmp_path)
+    agent.load_config()
+    return agent
+
+def test_action_process_kill_attempts_kill(tmp_path):
+    agent = make_phase_b_agent(tmp_path)
+    with patch("sandbox.red_agent.psutil") as mock_psutil:
+        mock_proc = MagicMock()
+        mock_proc.pid = 9999
+        mock_proc.name.return_value = "notepad.exe"
+        mock_psutil.process_iter.return_value = [mock_proc]
+        agent.action_process_kill(t0_pids=set())
+
+def test_action_cpu_spike_does_not_crash(tmp_path):
+    agent = make_phase_b_agent(tmp_path)
+    agent.action_cpu_spike(duration_s=0.05)
+
+def test_exfil_chunk_writes_to_exfil_dir(tmp_path):
+    exfil_dir = tmp_path / "exfil"
+    exfil_dir.mkdir()
+    config = {
+        "phase": "exfil",
+        "red_genome": [0.5,0.5,0.0,0.0,0.0,0.0,0.0,0.8,0.0],
+        "monitored_dirs": [], "monitored_reg_keys": [],
+    }
+    (tmp_path / "round_config.json").write_text(json.dumps(config))
+    agent = RedAgent(nz=tmp_path)
+    agent.load_config()
+    agent.action_exfil_chunk()
+    chunks = list(exfil_dir.iterdir())
+    assert len(chunks) >= 1
+
+def test_exfil_zero_chunk_size_no_write(tmp_path):
+    exfil_dir = tmp_path / "exfil"
+    exfil_dir.mkdir()
+    config = {
+        "phase": "exfil",
+        "red_genome": [0.5,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0],
+        "monitored_dirs": [], "monitored_reg_keys": [],
+    }
+    (tmp_path / "round_config.json").write_text(json.dumps(config))
+    agent = RedAgent(nz=tmp_path)
+    agent.load_config()
+    agent.action_exfil_chunk()
+    assert len(list(exfil_dir.iterdir())) == 0
