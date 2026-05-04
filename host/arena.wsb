@@ -16,9 +16,14 @@
       <SandboxFolder>C:\vanguard_duel\shared</SandboxFolder>
       <ReadOnly>true</ReadOnly>
     </MappedFolder>
+    <MappedFolder>
+      <HostFolder>D:\Ry\cyber\host</HostFolder>
+      <SandboxFolder>C:\vanguard_duel\host</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>python C:\vanguard_duel\sandbox\watchdog.py</Command>
+    <Command>cmd /c C:\vanguard_duel\host\setup_sandbox.bat</Command>
   </LogonCommand>
   <Networking>Enable</Networking>
 </Configuration>
