@@ -1,4 +1,14 @@
 @echo off
-winget install -e --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements
-set "PYEXE=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
-"%PYEXE%" C:\vanguard_duel\sandbox\watchdog.py
+set "LOG=C:\neutral_zone\sandbox_smoke.log"
+set "PYEXE=C:\vanguard_duel\host\python310\python.exe"
+
+echo [%DATE% %TIME%] sandbox started > "%LOG%"
+
+if exist "%PYEXE%" (
+    echo [%DATE% %TIME%] python found: %PYEXE% >> "%LOG%"
+    "%PYEXE%" --version >> "%LOG%" 2>&1
+    echo [%DATE% %TIME%] launching watchdog >> "%LOG%"
+    "%PYEXE%" C:\vanguard_duel\sandbox\watchdog.py
+) else (
+    echo [%DATE% %TIME%] ERROR: python.exe not found at %PYEXE% >> "%LOG%"
+)

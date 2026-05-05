@@ -3,7 +3,7 @@
   <MappedFolders>
     <MappedFolder>
       <HostFolder>F:\neutral_zone</HostFolder>
-      <SandboxFolder>F:\neutral_zone</SandboxFolder>
+      <SandboxFolder>C:\neutral_zone</SandboxFolder>
       <ReadOnly>false</ReadOnly>
     </MappedFolder>
     <MappedFolder>
